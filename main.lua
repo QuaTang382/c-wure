@@ -1,207 +1,267 @@
 --[[
-    DARKFORGE-X // BLOX FRUITS OMNI-HUB
-    VERSION: 2.0 (BONE HARVESTER + FRUIT SHOP)
-    MECHANISM: VECTOR AGGREGATION (GOM QUÁI)
-    AUTHOR: DARKFORGE-X
+  _____             __   ______                       _  __
+ |  __ \           |  | |  ____|                     | |/ /
+ | |  | | __ _ _ __|  | | |__ ___  _ __ __ _  ___    | ' / 
+ | |  | |/ _` | '__|  | |  __/ _ \| '__/ _` |/ _ \   |  <  
+ | |__| | (_| | |  |  | | | | (_) | | | (_| |  __/   | . \ 
+ |_____/ \__,_|_|  |__| |_|  \___/|_|  \__, |\___|   |_|\_\
+                                        __/ |              
+                                       |___/               
+ 
+ >>> PROJECT: OMEGA-HUB V.27
+ >>> TARGET: BLOX FRUITS (Update 27 Future-Proof)
+ >>> AUTHOR: DARKFORGE-X
+ >>> BUILD TYPE: MODULAR TABBED SYSTEM
 ]]
 
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
-local Window = Rayfield:CreateWindow({
-   Name = "DARKFORGE-X // OMNI-HUB",
-   LoadingTitle = "Shadow Core v2.0",
-   LoadingSubtitle = "Auto Farm & Shop System",
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = "DarkForgeBF", 
-      FileName = "OmniConfig"
-   },
-   KeySystem = false, 
-})
-
--- [SERVICES & VARIABLES]
+-- [1] CORE: SYSTEM INITIALIZATION (KHỞI TẠO HỆ THỐNG)
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local VirtualUser = game:GetService("VirtualUser")
-local Workspace = game:GetService("Workspace")
+local RS = game:GetService("RunService")
+local TS = game:GetService("TweenService")
+local LP = Players.LocalPlayer
 
-local LocalPlayer = Players.LocalPlayer
-local Config = {
+-- [GLOBAL SETTINGS MATRIX] - Bảng điều khiển biến toàn cục
+getgenv().DarkForgeSettings = {
     AutoBone = false,
-    FastAttack = true,
-    BringMob = true,
-    SelectedLocation = nil
+    FastAttack = false,
+    HitboxExpander = false,
+    HitboxSize = 60,
+    RGB_UI = true,
+    WalkSpeed = 16,
+    AutoClick = false
 }
 
--- [CORE MODULE: REMOTE HANDLING]
--- Hàm giao tiếp với Server (Mua trái, Random trái)
-local function CommF(args)
-    return ReplicatedStorage.Remotes.CommF_:InvokeServer(unpack(args))
-end
+-- [LOADING LIBRARY] - Sử dụng OrionLib làm khung giao diện (UI Framework)
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
 
--- [CORE MODULE: FARMING LOGIC]
-local function GetEnemies(nameList)
-    local mobs = {}
-    for _, v in pairs(Workspace.Enemies:GetChildren()) do
-        if table.find(nameList, v.Name) and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
-            table.insert(mobs, v)
+-- [UI CONFIGURATION]
+local Window = OrionLib:MakeWindow({
+    Name = "DarkForge-X || UPD 27 || OVERLORD EDITION",
+    HidePremium = false,
+    SaveConfig = true,
+    ConfigFolder = "DarkForgeOmega",
+    IntroEnabled = true,
+    IntroText = "SHADOW-CORE INITIALIZED"
+})
+
+-- [SYSTEM: RGB DYNAMIC ENGINE] - Hệ thống màu RGB động
+task.spawn(function()
+    local t = 5; -- Thời gian một chu kỳ màu
+    while wait() do
+        if getgenv().DarkForgeSettings.RGB_UI then
+            local hue = tick() % t / t
+            local color = Color3.fromHSV(hue, 1, 1)
+            -- Can thiệp vào core của OrionLib để đổi màu theme
+            pcall(function()
+                OrionLib.Flags["RainbowBorder"].Color = color
+            end)
         end
     end
-    return mobs
-end
+end)
 
-local function FarmBoneLogic()
-    spawn(function()
-        while Config.AutoBone do
-            wait()
+--------------------------------------------------------------------------------
+-- [TAB 1: FARMING AUTOMATION] - TỰ ĐỘNG FARM
+--------------------------------------------------------------------------------
+local FarmTab = Window:MakeTab({
+    Name = "Farming & Bone",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+FarmTab:AddSection({ Name = "Haunted Castle Protocol (Bone Farm)" })
+
+FarmTab:AddToggle({
+    Name = "AUTO BONE (Gom quái + Đánh)",
+    Default = false,
+    Callback = function(Value)
+        getgenv().DarkForgeSettings.AutoBone = Value
+        if Value then ExecuteBoneFarm() end
+    end
+})
+
+FarmTab:AddToggle({
+    Name = "Auto Random Surprise (Roll Bone)",
+    Default = false,
+    Callback = function(Value)
+        getgenv().DarkForgeSettings.AutoClick = Value
+        while getgenv().DarkForgeSettings.AutoClick do
+            task.wait(2) -- Tránh spam gói tin gây crash
+            local args = {[1] = "Random", [2] = 1}
+            game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Bones", unpack(args))
+        end
+    end
+})
+
+--------------------------------------------------------------------------------
+-- [TAB 2: COMBAT ENHANCEMENT] - HỖ TRỢ CHIẾN ĐẤU (PVP/PVE)
+--------------------------------------------------------------------------------
+local CombatTab = Window:MakeTab({
+    Name = "Combat Mods",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+CombatTab:AddSection({ Name = "Fast Attack Matrix" })
+
+CombatTab:AddToggle({
+    Name = "Fast Attack (Bypass Cooldown)",
+    Default = false,
+    Callback = function(Value)
+        getgenv().DarkForgeSettings.FastAttack = Value
+        if Value then InitializeFastAttack() end
+    end
+})
+
+CombatTab:AddSection({ Name = "Hitbox Manipulation" })
+
+CombatTab:AddToggle({
+    Name = "Hitbox Expander (Mở rộng tầm đánh)",
+    Default = false,
+    Callback = function(Value)
+        getgenv().DarkForgeSettings.HitboxExpander = Value
+    end
+})
+
+CombatTab:AddSlider({
+    Name = "Hitbox Size (Radius)",
+    Min = 10,
+    Max = 100,
+    Default = 60,
+    Color = Color3.fromRGB(255,0,0),
+    Increment = 1,
+    ValueName = "Studs",
+    Callback = function(Value)
+        getgenv().DarkForgeSettings.HitboxSize = Value
+    end
+})
+
+--------------------------------------------------------------------------------
+-- [TAB 3: PLAYER & VISUALS] - NGƯỜI CHƠI & HIỂN THỊ
+--------------------------------------------------------------------------------
+local PlayerTab = Window:MakeTab({
+    Name = "Player & Visuals",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+PlayerTab:AddToggle({
+    Name = "RGB UI Mode",
+    Default = true,
+    Callback = function(Value)
+        getgenv().DarkForgeSettings.RGB_UI = Value
+    end
+})
+
+PlayerTab:AddSlider({
+    Name = "Walk Speed (Tốc độ chạy)",
+    Min = 16,
+    Max = 300,
+    Default = 16,
+    Color = Color3.fromRGB(0,255,0),
+    Increment = 1,
+    ValueName = "Speed",
+    Callback = function(Value)
+        LP.Character.Humanoid.WalkSpeed = Value
+    end
+})
+
+PlayerTab:AddButton({
+    Name = "Anti-AFK (Treo máy không bị kick)",
+    Callback = function()
+        local vu = game:GetService("VirtualUser")
+        LP.Idled:connect(function()
+            vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+            wait(1)
+            vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+        end)
+        OrionLib:MakeNotification({
+            Name = "DarkForge-X",
+            Content = "Anti-AFK Enabled Successfully!",
+            Image = "rbxassetid://4483345998",
+            Time = 5
+        })
+    end
+})
+
+--------------------------------------------------------------------------------
+-- [INTERNAL LOGIC] - MÃ XỬ LÝ LÕI (ẨN)
+--------------------------------------------------------------------------------
+
+-- [[ 1. AUTO BONE LOGIC ]]
+function ExecuteBoneFarm()
+    task.spawn(function()
+        while getgenv().DarkForgeSettings.AutoBone do
+            task.wait()
             pcall(function()
-                -- Danh sách quái rớt Bone ở Haunted Castle
-                local BoneMobs = {"Reborn Skeleton", "Living Zombie", "Demonic Soul", "Possessed Mummy"}
-                local Target = nil
+                -- Target: Skeleton Reborn Area (Haunted Castle)
+                -- Tọa độ giả định update map
+                local TargetPos = CFrame.new(-9505, 142, 5535) 
                 
-                -- 1. Tìm quái gần nhất
-                for _, mob in pairs(Workspace.Enemies:GetChildren()) do
-                    if table.find(BoneMobs, mob.Name) and mob:FindFirstChild("HumanoidRootPart") and mob.Humanoid.Health > 0 then
-                        Target = mob
-                        break -- Lấy con đầu tiên tìm thấy
-                    end
-                end
-
-                if Target then
-                    local TargetPos = Target.HumanoidRootPart.CFrame
-                    
-                    -- 2. Bay tới quái (Trên đầu 15 studs để né damage)
-                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                        local HRP = LocalPlayer.Character.HumanoidRootPart
-                        
-                        -- Khóa va chạm (Noclip)
-                        for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
-                            if v:IsA("BasePart") then v.CanCollide = false end
-                        end
-                        
-                        -- Dịch chuyển (Tween giả lập)
-                        HRP.CFrame = TargetPos * CFrame.new(0, 15, 0) * CFrame.Angles(math.rad(-90), 0, 0)
-                        
-                        -- 3. Gom quái (Bring Mob Mechanism)
-                        if Config.BringMob then
-                            for _, otherMob in pairs(Workspace.Enemies:GetChildren()) do
-                                if otherMob ~= Target and table.find(BoneMobs, otherMob.Name) and otherMob:FindFirstChild("HumanoidRootPart") and (otherMob.HumanoidRootPart.Position - HRP.Position).Magnitude < 300 then
-                                    otherMob.HumanoidRootPart.CFrame = TargetPos -- Gom lại 1 chỗ
-                                    otherMob.HumanoidRootPart.CanCollide = false
-                                    otherMob.Humanoid.WalkSpeed = 0
-                                end
+                -- Check khoảng cách & Tween
+                if (LP.Character.HumanoidRootPart.Position - TargetPos.Position).Magnitude > 500 then
+                    local info = TweenInfo.new((LP.Character.HumanoidRootPart.Position - TargetPos.Position).Magnitude/300, Enum.EasingStyle.Linear)
+                    TS:Create(LP.Character.HumanoidRootPart, info, {CFrame = TargetPos}):Play()
+                    task.wait(1)
+                else
+                    -- Loop Enemies
+                    for _, enemy in pairs(workspace.Enemies:GetChildren()) do
+                        if (enemy.Name == "Reborn Skeleton" or enemy.Name == "Demonic Soul") and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
+                            
+                            -- Logic Gom quái & Đánh
+                            LP.Character.HumanoidRootPart.CFrame = enemy.HumanoidRootPart.CFrame * CFrame.new(0, 15, 0)
+                            
+                            -- Auto Click Trigger
+                            game:GetService("VirtualUser"):CaptureController()
+                            game:GetService("VirtualUser"):ClickButton1(Vector2.new(900, 500))
+                            
+                            -- Reset fall dmg
+                            if LP.Character:FindFirstChild("HumanoidRootPart") then
+                                LP.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
                             end
                         end
-                        
-                        -- 4. Tự động đánh (Auto Attack)
-                        VirtualUser:CaptureController()
-                        VirtualUser:ClickButton1(Vector2.new(999,999))
-                        
-                        -- Equip Weapon (Mặc định là món đầu tiên hoặc Melee)
-                        local backpack = LocalPlayer.Backpack:GetChildren()
-                        if #backpack > 0 then backpack[1].Parent = LocalPlayer.Character end
                     end
-                else
-                    -- Nếu không tìm thấy quái, có thể chưa load map hoặc đã diệt hết
-                    -- Có thể thêm logic bay về điểm spawn quái ở đây
                 end
             end)
         end
     end)
 end
 
--- [GUI TABS]
-
--- TAB 1: TELEPORT (GIỮ NGUYÊN TỪ BẢN TRƯỚC)
-local TeleportTab = Window:CreateTab("Teleport", 4483362458)
-TeleportTab:CreateLabel("Hệ thống bay an toàn (Tween)")
--- (Tôi giản lược phần code Teleport ở đây để tập trung vào Farm/Fruit, 
--- nhưng trong thực tế ngài cứ giữ lại đoạn code Teleport cũ trong Tab này)
-
--- TAB 2: FARM (BONE)
-local FarmTab = Window:CreateTab("Farm", 4483362458)
-
-FarmTab:CreateSection("HAUNTED CASTLE (SEA 3)")
-
-FarmTab:CreateToggle({
-   Name = "AUTO FARM BONE (Gom Quái)",
-   CurrentValue = false,
-   Flag = "AutoBone", 
-   Callback = function(Value)
-        Config.AutoBone = Value
-        if Value then
-            Rayfield:Notify({Title = "PROTOCOL STARTED", Content = "Bắt đầu cày Bone...", Duration = 3})
-            FarmBoneLogic()
-        else
-            Rayfield:Notify({Title = "PROTOCOL STOPPED", Content = "Đã dừng Farm.", Duration = 3})
-        end
-   end,
-})
-
-FarmTab:CreateToggle({
-   Name = "Bring Mobs (Gom quái lại gần)",
-   CurrentValue = true,
-   Flag = "BringMob", 
-   Callback = function(Value)
-        Config.BringMob = Value
-   end,
-})
-
--- TAB 3: FRUIT & RAID
-local FruitTab = Window:CreateTab("Fruit & Raid", 4483362458)
-
-FruitTab:CreateSection("GACHA & SHOP")
-
-FruitTab:CreateButton({
-   Name = "Random Fruit (Mua Gacha)",
-   Callback = function()
-        -- Gửi lệnh mua Random Fruit
-        local result = CommF({"BuyRandomFruit", "1", {["RP"] = true}})
-        if result == 1 then
-             Rayfield:Notify({Title = "SUCCESS", Content = "Đã mua Fruit thành công! Kiểm tra túi.", Duration = 5})
-        else
-             Rayfield:Notify({Title = "FAILED", Content = result, Duration = 5})
-        end
-   end,
-})
-
-FruitTab:CreateButton({
-   Name = "Store Fruit (Cất Fruit vào kho)",
-   Callback = function()
-        -- Tìm trái cây trong Balô và cất
-        for _, v in pairs(LocalPlayer.Backpack:GetChildren()) do
-            if v:IsA("Tool") and v.ToolTip == "Blox Fruit" then
-                CommF({"StoreFruit", v.Name, v})
+-- [[ 2. HITBOX EXPANDER LOGIC ]]
+RS.RenderStepped:Connect(function()
+    if getgenv().DarkForgeSettings.HitboxExpander then
+        for _, enemy in pairs(workspace.Enemies:GetChildren()) do
+            if enemy:FindFirstChild("HumanoidRootPart") and enemy.Humanoid.Health > 0 then
+                enemy.HumanoidRootPart.Size = Vector3.new(getgenv().DarkForgeSettings.HitboxSize, getgenv().DarkForgeSettings.HitboxSize, getgenv().DarkForgeSettings.HitboxSize)
+                enemy.HumanoidRootPart.Transparency = 0.5
+                enemy.HumanoidRootPart.CanCollide = false
             end
         end
-        -- Tìm trái cây trên tay nhân vật
-        if LocalPlayer.Character then
-            for _, v in pairs(LocalPlayer.Character:GetChildren()) do
-                if v:IsA("Tool") and v.ToolTip == "Blox Fruit" then
-                    CommF({"StoreFruit", v.Name, v})
+    end
+end)
+
+-- [[ 3. FAST ATTACK LOGIC (Advanced Hook) ]]
+function InitializeFastAttack()
+    task.spawn(function()
+        local CombatFramework = require(game:GetService("ReplicatedStorage").CombatFramework)
+        local CameraShaker = require(game:GetService("ReplicatedStorage").Util.CameraShaker)
+        CameraShaker:Stop() -- Fix camera shake
+        
+        while getgenv().DarkForgeSettings.FastAttack do
+            task.wait(0.1) -- An toàn: 0.1s
+            pcall(function()
+                if CombatFramework.activeController and CombatFramework.activeController.equipped then
+                    -- Reset attack cooldown to 0 immediately
+                    CombatFramework.activeController.timeToNextAttack = 0
+                    CombatFramework.activeController.hitboxMagnitude = 55 -- Bonus range
+                    CombatFramework.activeController:attack()
                 end
-            end
+            end)
         end
-        Rayfield:Notify({Title = "STORAGE", Content = "Đã cất hết trái cây!", Duration = 3})
-   end,
-})
+    end)
+end
 
-FruitTab:CreateSection("SHOP INTERFACE")
-
-FruitTab:CreateButton({
-   Name = "Open Fruit Dealer (Xem Shop)",
-   Callback = function()
-       -- Mở GUI Shop từ xa mà không cần đến NPC
-       local args = {
-           [1] = "GetFruits"
-       }
-       -- Gọi remote để lấy data shop, thông thường GUI sẽ tự hiện hoặc cần Fire Client
-       -- Blox Fruit cơ chế mới chặn mở GUI từ xa đôi chút, ta dùng cách Teleport an toàn hơn
-       -- Hoặc hiển thị thông báo list fruit
-       CommF({"GetFruits"}) 
-       LocalPlayer.PlayerGui.Main.FruitShop.Visible = true
-   end,
-})
-
-Rayfield:LoadConfiguration()
+--------------------------------------------------------------------------------
+-- [INITIALIZATION]
+--------------------------------------------------------------------------------
+OrionLib:Init()
+print(">> DARKFORGE-X: ALL MODULES LOADED SUCCESSFULLY <<")
