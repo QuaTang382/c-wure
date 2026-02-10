@@ -8,215 +8,210 @@
                                         __/ |              
                                        |___/               
  
- >>> PROJECT: OMEGA-HUB V.27
- >>> TARGET: BLOX FRUITS (Update 27 Future-Proof)
- >>> AUTHOR: DARKFORGE-X
- >>> BUILD TYPE: MODULAR TABBED SYSTEM
+ >>> SYSTEM UPGRADE: UI ENGINE SWAP -> RAYFIELD INTERFACE
+ >>> REASON: ORION DEPRECATED/UNSTABLE
+ >>> TARGET: BLOX FRUITS UPDATE 27
+ >>> BUILD: SHADOW-CORE STABLE
 ]]
 
--- [1] CORE: SYSTEM INITIALIZATION (KHỞI TẠO HỆ THỐNG)
-local Players = game:GetService("Players")
-local RS = game:GetService("RunService")
-local TS = game:GetService("TweenService")
-local LP = Players.LocalPlayer
+-- [1] RAYFIELD BOOTSTRAP (KHỞI ĐỘNG THƯ VIỆN)
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- [GLOBAL SETTINGS MATRIX] - Bảng điều khiển biến toàn cục
-getgenv().DarkForgeSettings = {
+-- [SYSTEM CONFIGS]
+getgenv().DarkForge = {
     AutoBone = false,
     FastAttack = false,
-    HitboxExpander = false,
     HitboxSize = 60,
-    RGB_UI = true,
-    WalkSpeed = 16,
-    AutoClick = false
+    HitboxExpander = false,
+    RGB_Speed = 0.01,
+    RainbowUI = true
 }
 
--- [LOADING LIBRARY] - Sử dụng OrionLib làm khung giao diện (UI Framework)
-local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
-
--- [UI CONFIGURATION]
-local Window = OrionLib:MakeWindow({
-    Name = "DarkForge-X || UPD 27 || OVERLORD EDITION",
-    HidePremium = false,
-    SaveConfig = true,
-    ConfigFolder = "DarkForgeOmega",
-    IntroEnabled = true,
-    IntroText = "SHADOW-CORE INITIALIZED"
+local Window = Rayfield:CreateWindow({
+    Name = "DarkForge-X ⚡ [UPDATE 27] ⚡",
+    LoadingTitle = "SHADOW-CORE INJECTING...",
+    LoadingSubtitle = "By DarkForge-X",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "DarkForgeRayfield", 
+        FileName = "DFX_Config"
+    },
+    Discord = {
+        Enabled = false,
+        Invite = "no-invite", 
+        RememberJoins = true 
+    },
+    KeySystem = false -- Tắt Key để test nhanh
 })
 
--- [SYSTEM: RGB DYNAMIC ENGINE] - Hệ thống màu RGB động
+-- [SYSTEM: ADVANCED RGB ENGINE] (Xử lý RGB cho Rayfield)
+-- Rayfield không có sẵn Rainbow loop, ta sẽ inject trực tiếp vào Theme wrapper
 task.spawn(function()
-    local t = 5; -- Thời gian một chu kỳ màu
-    while wait() do
-        if getgenv().DarkForgeSettings.RGB_UI then
+    local t = 5
+    while wait(0.1) do
+        if getgenv().DarkForge.RainbowUI then
             local hue = tick() % t / t
             local color = Color3.fromHSV(hue, 1, 1)
-            -- Can thiệp vào core của OrionLib để đổi màu theme
+            -- Cập nhật màu giao diện thời gian thực
+            -- Lưu ý: Rayfield hiện đại có thể hơi lag nếu update quá nhanh, delay 0.1s là chuẩn
+            Rayfield:ModifyWindow({
+                Theme = {
+                    TextColor = color,
+                    ImageColor = color
+                } 
+            })
+            -- Hook vào CoreUI của Rayfield để đổi viền (Advanced)
             pcall(function()
-                OrionLib.Flags["RainbowBorder"].Color = color
+                 game.CoreGui.Rayfield.Main.BorderColor3 = color
             end)
         end
     end
 end)
 
 --------------------------------------------------------------------------------
--- [TAB 1: FARMING AUTOMATION] - TỰ ĐỘNG FARM
+-- [TAB 1: AUTOMATION] (AUTO FARM BONE & LEVEL)
 --------------------------------------------------------------------------------
-local FarmTab = Window:MakeTab({
-    Name = "Farming & Bone",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
-})
+local TabFarm = Window:CreateTab("Auto Farm ☠️", 4483362458) -- Skull Icon
 
-FarmTab:AddSection({ Name = "Haunted Castle Protocol (Bone Farm)" })
+TabFarm:CreateSection("Haunted Castle Operations")
 
-FarmTab:AddToggle({
-    Name = "AUTO BONE (Gom quái + Đánh)",
-    Default = false,
+TabFarm:CreateToggle({
+    Name = "AUTO BONE (Gom Quái + Hủy Diệt)",
+    CurrentValue = false,
+    Flag = "AutoBone",
     Callback = function(Value)
-        getgenv().DarkForgeSettings.AutoBone = Value
+        getgenv().DarkForge.AutoBone = Value
         if Value then ExecuteBoneFarm() end
-    end
+    end,
 })
 
-FarmTab:AddToggle({
-    Name = "Auto Random Surprise (Roll Bone)",
-    Default = false,
+TabFarm:CreateToggle({
+    Name = "Auto Pray/Roll (Random Surprise)",
+    CurrentValue = false,
+    Flag = "AutoRoll",
     Callback = function(Value)
-        getgenv().DarkForgeSettings.AutoClick = Value
-        while getgenv().DarkForgeSettings.AutoClick do
-            task.wait(2) -- Tránh spam gói tin gây crash
-            local args = {[1] = "Random", [2] = 1}
-            game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Bones", unpack(args))
+        getgenv().DarkForge.AutoRoll = Value
+        while getgenv().DarkForge.AutoRoll do
+            task.wait(3) -- Delay 3s để tránh lag server
+            game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Bones", "Random", 1)
         end
-    end
+    end,
 })
 
 --------------------------------------------------------------------------------
--- [TAB 2: COMBAT ENHANCEMENT] - HỖ TRỢ CHIẾN ĐẤU (PVP/PVE)
+-- [TAB 2: COMBAT SUITE] (PVP & DAMAGE)
 --------------------------------------------------------------------------------
-local CombatTab = Window:MakeTab({
-    Name = "Combat Mods",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
-})
+local TabCombat = Window:CreateTab("Combat God ⚔️", 4483362458)
 
-CombatTab:AddSection({ Name = "Fast Attack Matrix" })
+TabCombat:CreateSection("Damage Amplification")
 
-CombatTab:AddToggle({
-    Name = "Fast Attack (Bypass Cooldown)",
-    Default = false,
+TabCombat:CreateToggle({
+    Name = "Fast Attack V4 (No Cooldown)",
+    CurrentValue = false,
+    Flag = "FastAttack",
     Callback = function(Value)
-        getgenv().DarkForgeSettings.FastAttack = Value
-        if Value then InitializeFastAttack() end
-    end
+        getgenv().DarkForge.FastAttack = Value
+        if Value then StartFastAttack() end
+    end,
 })
 
-CombatTab:AddSection({ Name = "Hitbox Manipulation" })
+TabCombat:CreateSection("Hitbox Manipulation")
 
-CombatTab:AddToggle({
-    Name = "Hitbox Expander (Mở rộng tầm đánh)",
-    Default = false,
+TabCombat:CreateToggle({
+    Name = "Hitbox Expander (To hơn đầu)",
+    CurrentValue = false,
+    Flag = "HitboxExp",
     Callback = function(Value)
-        getgenv().DarkForgeSettings.HitboxExpander = Value
-    end
+        getgenv().DarkForge.HitboxExpander = Value
+    end,
 })
 
-CombatTab:AddSlider({
+TabCombat:CreateSlider({
     Name = "Hitbox Size (Radius)",
-    Min = 10,
-    Max = 100,
-    Default = 60,
-    Color = Color3.fromRGB(255,0,0),
+    Range = {10, 150},
     Increment = 1,
-    ValueName = "Studs",
+    Suffix = "Studs",
+    CurrentValue = 60,
+    Flag = "HitboxSize",
     Callback = function(Value)
-        getgenv().DarkForgeSettings.HitboxSize = Value
-    end
+        getgenv().DarkForge.HitboxSize = Value
+    end,
 })
 
 --------------------------------------------------------------------------------
--- [TAB 3: PLAYER & VISUALS] - NGƯỜI CHƠI & HIỂN THỊ
+-- [TAB 3: SETTINGS & VISUALS]
 --------------------------------------------------------------------------------
-local PlayerTab = Window:MakeTab({
-    Name = "Player & Visuals",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
-})
+local TabSet = Window:CreateTab("Settings ⚙️", 4483362458)
 
-PlayerTab:AddToggle({
-    Name = "RGB UI Mode",
-    Default = true,
+TabSet:CreateToggle({
+    Name = "RGB Chroma Mode (Đổi màu liên tục)",
+    CurrentValue = true,
+    Flag = "RainbowUI",
     Callback = function(Value)
-        getgenv().DarkForgeSettings.RGB_UI = Value
-    end
+        getgenv().DarkForge.RainbowUI = Value
+    end,
 })
 
-PlayerTab:AddSlider({
-    Name = "Walk Speed (Tốc độ chạy)",
-    Min = 16,
-    Max = 300,
-    Default = 16,
-    Color = Color3.fromRGB(0,255,0),
-    Increment = 1,
-    ValueName = "Speed",
-    Callback = function(Value)
-        LP.Character.Humanoid.WalkSpeed = Value
-    end
-})
-
-PlayerTab:AddButton({
-    Name = "Anti-AFK (Treo máy không bị kick)",
+TabSet:CreateButton({
+    Name = "Unload Script (Dọn dẹp)",
     Callback = function()
-        local vu = game:GetService("VirtualUser")
-        LP.Idled:connect(function()
-            vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-            wait(1)
-            vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-        end)
-        OrionLib:MakeNotification({
-            Name = "DarkForge-X",
-            Content = "Anti-AFK Enabled Successfully!",
-            Image = "rbxassetid://4483345998",
-            Time = 5
-        })
-    end
+        Rayfield:Destroy()
+    end,
 })
 
+TabSet:CreateLabel("Dev: DarkForge-X | Shadow-Core Active")
+
 --------------------------------------------------------------------------------
--- [INTERNAL LOGIC] - MÃ XỬ LÝ LÕI (ẨN)
+-- [LOGIC CORE] - ENGINE XỬ LÝ
 --------------------------------------------------------------------------------
 
--- [[ 1. AUTO BONE LOGIC ]]
+local Players = game:GetService("Players")
+local LP = Players.LocalPlayer
+local TS = game:GetService("TweenService")
+local RS = game:GetService("RunService")
+
+-- [AUTO BONE ENGINE]
 function ExecuteBoneFarm()
     task.spawn(function()
-        while getgenv().DarkForgeSettings.AutoBone do
+        while getgenv().DarkForge.AutoBone do
             task.wait()
             pcall(function()
-                -- Target: Skeleton Reborn Area (Haunted Castle)
-                -- Tọa độ giả định update map
-                local TargetPos = CFrame.new(-9505, 142, 5535) 
+                -- Xác định vị trí Haunted Castle (Logic giả định cho Upd 27)
+                local TargetZone = CFrame.new(-9505, 142, 5535)
+                local MyChar = LP.Character
                 
-                -- Check khoảng cách & Tween
-                if (LP.Character.HumanoidRootPart.Position - TargetPos.Position).Magnitude > 500 then
-                    local info = TweenInfo.new((LP.Character.HumanoidRootPart.Position - TargetPos.Position).Magnitude/300, Enum.EasingStyle.Linear)
-                    TS:Create(LP.Character.HumanoidRootPart, info, {CFrame = TargetPos}):Play()
-                    task.wait(1)
-                else
-                    -- Loop Enemies
-                    for _, enemy in pairs(workspace.Enemies:GetChildren()) do
-                        if (enemy.Name == "Reborn Skeleton" or enemy.Name == "Demonic Soul") and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
-                            
-                            -- Logic Gom quái & Đánh
-                            LP.Character.HumanoidRootPart.CFrame = enemy.HumanoidRootPart.CFrame * CFrame.new(0, 15, 0)
-                            
-                            -- Auto Click Trigger
-                            game:GetService("VirtualUser"):CaptureController()
-                            game:GetService("VirtualUser"):ClickButton1(Vector2.new(900, 500))
-                            
-                            -- Reset fall dmg
-                            if LP.Character:FindFirstChild("HumanoidRootPart") then
-                                LP.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+                if MyChar and MyChar:FindFirstChild("HumanoidRootPart") then
+                    -- 1. Check khoảng cách để Tween
+                    if (MyChar.HumanoidRootPart.Position - TargetZone.Position).Magnitude > 500 then
+                        -- Bay tới đảo
+                        local tweenInfo = TweenInfo.new((MyChar.HumanoidRootPart.Position - TargetZone.Position).Magnitude / 320, Enum.EasingStyle.Linear)
+                        local tween = TS:Create(MyChar.HumanoidRootPart, tweenInfo, {CFrame = TargetZone})
+                        tween:Play()
+                        tween.Completed:Wait()
+                    else
+                        -- 2. Logic tìm và gom quái
+                        for _, v in pairs(workspace.Enemies:GetChildren()) do
+                            if (v.Name == "Reborn Skeleton" or v.Name == "Demonic Soul" or v.Name == "Living Zombie") 
+                               and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+                                
+                                -- Tween tới sau lưng quái
+                                MyChar.HumanoidRootPart.CFrame = v.HumanoidRootPart.CFrame * CFrame.new(0, 7, 5) -- Đứng trên cao một chút
+                                
+                                -- [MAGNET LOGIC] Gom quái lại gần
+                                if (v.HumanoidRootPart.Position - MyChar.HumanoidRootPart.Position).Magnitude < 100 then
+                                    v.HumanoidRootPart.CFrame = MyChar.HumanoidRootPart.CFrame * CFrame.new(0,0,-5)
+                                    v.HumanoidRootPart.Size = Vector3.new(50,50,50) -- Auto to hitbox luôn cho dễ đánh
+                                    v.HumanoidRootPart.Transparency = 0.8
+                                    v.HumanoidRootPart.CanCollide = false
+                                    v.Humanoid.WalkSpeed = 0
+                                end
+
+                                -- Auto Click
+                                game:GetService("VirtualUser"):CaptureController()
+                                game:GetService("VirtualUser"):ClickButton1(Vector2.new(900, 500))
+                                
+                                -- Giữ vị trí không bị rơi
+                                MyChar.HumanoidRootPart.Velocity = Vector3.new(0,0,0)
                             end
                         end
                     end
@@ -226,33 +221,23 @@ function ExecuteBoneFarm()
     end)
 end
 
--- [[ 2. HITBOX EXPANDER LOGIC ]]
-RS.RenderStepped:Connect(function()
-    if getgenv().DarkForgeSettings.HitboxExpander then
-        for _, enemy in pairs(workspace.Enemies:GetChildren()) do
-            if enemy:FindFirstChild("HumanoidRootPart") and enemy.Humanoid.Health > 0 then
-                enemy.HumanoidRootPart.Size = Vector3.new(getgenv().DarkForgeSettings.HitboxSize, getgenv().DarkForgeSettings.HitboxSize, getgenv().DarkForgeSettings.HitboxSize)
-                enemy.HumanoidRootPart.Transparency = 0.5
-                enemy.HumanoidRootPart.CanCollide = false
-            end
-        end
-    end
-end)
-
--- [[ 3. FAST ATTACK LOGIC (Advanced Hook) ]]
-function InitializeFastAttack()
+-- [FAST ATTACK V4 ENGINE]
+function StartFastAttack()
     task.spawn(function()
         local CombatFramework = require(game:GetService("ReplicatedStorage").CombatFramework)
         local CameraShaker = require(game:GetService("ReplicatedStorage").Util.CameraShaker)
-        CameraShaker:Stop() -- Fix camera shake
+        CameraShaker:Stop() -- Xóa rung màn hình
         
-        while getgenv().DarkForgeSettings.FastAttack do
-            task.wait(0.1) -- An toàn: 0.1s
+        while getgenv().DarkForge.FastAttack do
+            -- Tốc độ spam: Cực nhanh
+            task.wait(0) 
             pcall(function()
                 if CombatFramework.activeController and CombatFramework.activeController.equipped then
-                    -- Reset attack cooldown to 0 immediately
-                    CombatFramework.activeController.timeToNextAttack = 0
-                    CombatFramework.activeController.hitboxMagnitude = 55 -- Bonus range
+                    -- Reset cooldown timer về 0 liên tục
+                    CombatFramework.activeController.timeToNextAttack = -1 
+                    -- Hack tầm đánh của kiếm (local)
+                    CombatFramework.activeController.hitboxMagnitude = 60
+                    -- Kích hoạt đòn đánh
                     CombatFramework.activeController:attack()
                 end
             end)
@@ -260,8 +245,21 @@ function InitializeFastAttack()
     end)
 end
 
---------------------------------------------------------------------------------
--- [INITIALIZATION]
---------------------------------------------------------------------------------
-OrionLib:Init()
-print(">> DARKFORGE-X: ALL MODULES LOADED SUCCESSFULLY <<")
+-- [HITBOX EXPANDER THREAD]
+RS.RenderStepped:Connect(function()
+    if getgenv().DarkForge.HitboxExpander then
+        for _, v in pairs(workspace.Enemies:GetChildren()) do
+            if v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+                v.HumanoidRootPart.Size = Vector3.new(getgenv().DarkForge.HitboxSize, getgenv().DarkForge.HitboxSize, getgenv().DarkForge.HitboxSize)
+                v.HumanoidRootPart.Transparency = 0.7
+                v.HumanoidRootPart.Color = Color3.fromRGB(255, 0, 0)
+                v.HumanoidRootPart.CanCollide = false
+            end
+        end
+    end
+end)
+
+-- [ANTI AFK]
+for i,v in pairs(getconnections(game:GetService("Players").LocalPlayer.Idled)) do
+    v:Disable()
+end
