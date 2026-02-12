@@ -1,7 +1,7 @@
 --[[
     DARKFORGE-X // GATEKEEPER SYSTEM
     PROTECTION LEVEL: SIMPLE KEY AUTH
-    TARGET SCRIPT: NEON-GOD V10 (PRESERVED)
+    TARGET SCRIPT: NEON-GOD V11 (DISTANCE ESP ADDED)
 ]]
 
 local CoreGui = game:GetService("CoreGui")
@@ -11,17 +11,17 @@ local UserInputService = game:GetService("UserInputService")
 -- [1] CẤU HÌNH KEY (SỬA KEY Ở ĐÂY)
 local ValidKey = "DARKFORGE-2025" 
 
--- [2] HÀM CHẠY SCRIPT CHÍNH (CODE CỦA NGÀI NẰM Ở ĐÂY)
+-- [2] HÀM CHẠY SCRIPT CHÍNH (UPDATE V11)
 local function LoadMainScript()
-    -- !!! BẮT ĐẦU CODE GỐC NEON-GOD V10 !!! --
+    -- !!! BẮT ĐẦU CODE NEON-GOD V11 !!! --
     
     local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
     local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
     local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
     local Window = Fluent:CreateWindow({
-        Title = "DARKFORGE-X // NEON GOD",
-        SubTitle = "RGB System Active",
+        Title = "DARKFORGE-X // NEON GOD V11",
+        SubTitle = "Distance ESP Active",
         TabWidth = 160,
         Size = UDim2.fromOffset(580, 460),
         Acrylic = true, 
@@ -40,6 +40,47 @@ local function LoadMainScript()
     local LocalPlayer = Players.LocalPlayer
     local Options = Fluent.Options
 
+    -- HÀM HỖ TRỢ TẠO ESP (HIGHLIGHT + TEXT)
+    local function CreateESPObj(model, name, color, showDist)
+        if not model then return end
+        
+        -- 1. Highlight (Viền sáng)
+        if not model:FindFirstChild("DF_Highlight") then
+            local h = Instance.new("Highlight", model)
+            h.Name = "DF_Highlight"
+            h.FillColor = color
+            h.OutlineColor = color
+            h.FillTransparency = 0.5
+            h.OutlineTransparency = 0
+        end
+
+        -- 2. BillboardGui (Chữ hiện tên + khoảng cách)
+        if not model:FindFirstChild("DF_Info") then
+            local bg = Instance.new("BillboardGui", model)
+            bg.Name = "DF_Info"
+            bg.Size = UDim2.new(0, 200, 0, 50)
+            bg.AlwaysOnTop = true
+            bg.StudsOffset = Vector3.new(0, 2, 0)
+            
+            -- Gắn vào phần chính của Model để chữ không bị lệch
+            if model:IsA("Model") and model.PrimaryPart then
+                bg.Adornee = model.PrimaryPart
+            elseif model:FindFirstChild("HumanoidRootPart") then
+                bg.Adornee = model.HumanoidRootPart
+            end
+
+            local lbl = Instance.new("TextLabel", bg)
+            lbl.Name = "TextLabel"
+            lbl.Size = UDim2.new(1, 0, 1, 0)
+            lbl.BackgroundTransparency = 1
+            lbl.TextColor3 = color
+            lbl.TextStrokeTransparency = 0
+            lbl.Font = Enum.Font.Code
+            lbl.TextSize = 14
+            lbl.Text = name
+        end
+    end
+
     -- UI CONSTRUCTION
     local Tabs = {
         Main = Window:AddTab({ Title = "Automation", Icon = "bot" }),
@@ -57,11 +98,11 @@ local function LoadMainScript()
     Tabs.Main:AddToggle("InstantE", {Title = "Instant Interact (Không giữ E)", Default = false })
 
     -- >> TAB VISUALS
-    Tabs.Visuals:AddParagraph({ Title = "ESP Manager", Content = "Quản lý hệ thống nhìn xuyên tường." })
-    Tabs.Visuals:AddToggle("RGB_ESP", {Title = "RGB Mode (Màu Cầu Vồng)", Description = "Làm màu ESP nhấp nháy liên tục.", Default = false })
-    Tabs.Visuals:AddToggle("DoorESP", {Title = "True Door ESP (Cửa Đúng)", Default = true })
+    Tabs.Visuals:AddParagraph({ Title = "Enhanced ESP", Content = "ESP hiển thị Tên và Khoảng Cách." })
+    Tabs.Visuals:AddToggle("RGB_ESP", {Title = "RGB Mode (Màu Cầu Vồng)", Default = false })
+    Tabs.Visuals:AddToggle("DoorESP", {Title = "True Door ESP", Default = true })
     Tabs.Visuals:AddToggle("EntESP", {Title = "Entity ESP (Quái Vật)", Default = true })
-    Tabs.Visuals:AddToggle("KeyESP", {Title = "Key & Lever ESP (Chìa Khóa)", Default = true })
+    Tabs.Visuals:AddToggle("KeyESP", {Title = "Key & Lever ESP", Default = true })
     Tabs.Visuals:AddToggle("ItemESP", {Title = "Item ESP (Dụng Cụ)", Default = false })
     Tabs.Visuals:AddToggle("BookESP", {Title = "Book ESP (Room 50)", Default = false })
     Tabs.Visuals:AddToggle("Fullbright", {Title = "Fullbright (Sáng)", Default = false })
@@ -95,6 +136,7 @@ local function LoadMainScript()
         end
     end)
 
+    -- VACUUM LOOP
     task.spawn(function()
         while true do
             task.wait(0.1)
@@ -152,89 +194,100 @@ local function LoadMainScript()
         return oldNamecall(self, ...)
     end)
 
+    -- RENDER STEPPED (ESP & UPDATES)
     RunService.RenderStepped:Connect(function()
         local CurrentColor = Options.RGB_ESP.Value and RGBColor or nil
+        
+        -- HÀM CẬP NHẬT TEXT DISTANCE
+        local function UpdateESPText(model, baseText)
+            if model:FindFirstChild("DF_Info") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                local targetPos = Vector3.new(0,0,0)
+                if model:IsA("Model") and model.PrimaryPart then targetPos = model.PrimaryPart.Position
+                elseif model:IsA("BasePart") then targetPos = model.Position end
+                
+                local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - targetPos).Magnitude)
+                model.DF_Info.TextLabel.Text = string.format("%s [%dm]", baseText, dist)
+                
+                if CurrentColor then
+                    model.DF_Info.TextLabel.TextColor3 = CurrentColor
+                    if model:FindFirstChild("DF_Highlight") then model.DF_Highlight.FillColor = CurrentColor end
+                end
+            end
+        end
+
         pcall(function()
+            -- 1. TRUE DOOR ESP
             if Options.DoorESP.Value then
                 local latest = ReplicatedStorage.GameData.LatestRoom.Value
                 for _, room in pairs(Workspace.CurrentRooms:GetChildren()) do
                     if tonumber(room.Name) == latest then
                         local door = room:FindFirstChild("Door")
                         if door then
-                             if not door:FindFirstChild("DF_Door") then
-                                local h = Instance.new("Highlight", door)
-                                h.Name = "DF_Door"
-                                h.FillColor = Color3.fromRGB(0, 255, 0)
-                                h.OutlineColor = Color3.fromRGB(255, 255, 255)
-                            else
-                                if CurrentColor then door.DF_Door.FillColor = CurrentColor end
-                            end
+                             CreateESPObj(door, "DOOR", Color3.fromRGB(0, 255, 0))
+                             UpdateESPText(door, "DOOR")
                         end
                     end
                 end
             end
+
+            -- 2. ENTITY ESP (QUÁI VẬT)
             if Options.EntESP.Value then
                 for _, v in pairs(Workspace:GetChildren()) do
                     if (v.Name == "RushMoving" or v.Name == "AmbushMoving" or v.Name == "FigureRagdoll" or v.Name == "SeekMoving") then
-                         if not v:FindFirstChild("DF_Ent") then
-                            local h = Instance.new("Highlight", v)
-                            h.Name = "DF_Ent"
-                            h.FillColor = Color3.fromRGB(255, 0, 0)
-                            h.OutlineColor = Color3.fromRGB(255, 0, 0)
-                            Fluent:Notify({Title = "DANGER!", Content = v.Name .. " SPAWNED!", Duration = 5})
-                        else
-                            if CurrentColor then v.DF_Ent.FillColor = CurrentColor end
-                        end
+                        local entName = v.Name
+                        if v.Name == "FigureRagdoll" then entName = "FIGURE" end
+                        if v.Name == "RushMoving" then entName = "RUSH" end
+                        if v.Name == "AmbushMoving" then entName = "AMBUSH" end
+                        
+                        CreateESPObj(v, entName, Color3.fromRGB(255, 0, 0))
+                        UpdateESPText(v, entName)
                     end
                 end
             end
+
+            -- 3. KEY & LEVER ESP
             if Options.KeyESP.Value and Workspace:FindFirstChild("CurrentRooms") then
                 for _, room in pairs(Workspace.CurrentRooms:GetChildren()) do
                     for _, asset in pairs(room:GetDescendants()) do
-                        if (asset.Name == "KeyObtain" or asset.Name == "LeverForGate") then
-                            if not asset:FindFirstChild("DF_Key") then
-                                local h = Instance.new("Highlight", asset)
-                                h.Name = "DF_Key"
-                                h.FillColor = Color3.fromRGB(255, 255, 0) 
-                                h.OutlineColor = Color3.fromRGB(255, 255, 255)
-                            else
-                                if CurrentColor then asset.DF_Key.FillColor = CurrentColor end
-                            end
+                        if asset.Name == "KeyObtain" then
+                            CreateESPObj(asset, "KEY", Color3.fromRGB(255, 255, 0))
+                            UpdateESPText(asset, "KEY")
+                        elseif asset.Name == "LeverForGate" then
+                            CreateESPObj(asset, "LEVER", Color3.fromRGB(255, 255, 0))
+                            UpdateESPText(asset, "LEVER")
                         end
                     end
                 end
             end
+
+            -- 4. ITEM ESP
             if Options.ItemESP.Value and Workspace:FindFirstChild("CurrentRooms") then
                 for _, room in pairs(Workspace.CurrentRooms:GetChildren()) do
                     for _, asset in pairs(room:GetDescendants()) do
-                        if asset:IsA("Model") and (asset.Name == "Lighter" or asset.Name == "Lockpick" or asset.Name == "Vitamins" or asset.Name == "Bandage" or asset.Name == "Crucifix" or asset.Name == "SkeletonKey") then
-                            if not asset:FindFirstChild("DF_Item") then
-                                local h = Instance.new("Highlight", asset)
-                                h.Name = "DF_Item"
-                                h.FillColor = Color3.fromRGB(0, 255, 255)
-                            else
-                                if CurrentColor then asset.DF_Item.FillColor = CurrentColor end
-                            end
+                        if asset:IsA("Model") then
+                             if asset.Name == "Lighter" then CreateESPObj(asset, "LIGHTER", Color3.fromRGB(0, 255, 255)); UpdateESPText(asset, "LIGHTER") end
+                             if asset.Name == "Lockpick" then CreateESPObj(asset, "LOCKPICK", Color3.fromRGB(0, 255, 255)); UpdateESPText(asset, "LOCKPICK") end
+                             if asset.Name == "Vitamins" then CreateESPObj(asset, "VITAMINS", Color3.fromRGB(0, 255, 255)); UpdateESPText(asset, "VITAMINS") end
+                             if asset.Name == "Crucifix" then CreateESPObj(asset, "CRUCIFIX", Color3.fromRGB(0, 255, 255)); UpdateESPText(asset, "CRUCIFIX") end
+                             if asset.Name == "SkeletonKey" then CreateESPObj(asset, "SKELETON KEY", Color3.fromRGB(0, 255, 255)); UpdateESPText(asset, "SKEL KEY") end
                         end
                     end
                 end
             end
+
+            -- 5. BOOK ESP
             if Options.BookESP.Value and Workspace:FindFirstChild("CurrentRooms") then
                 for _, room in pairs(Workspace.CurrentRooms:GetChildren()) do
                     for _, asset in pairs(room:GetDescendants()) do
                         if asset.Name == "LiveHintBook" then
-                             if not asset:FindFirstChild("DF_Book") then
-                                local h = Instance.new("Highlight", asset)
-                                h.Name = "DF_Book"
-                                h.FillColor = Color3.fromRGB(255, 0, 255)
-                            else
-                                if CurrentColor then asset.DF_Book.FillColor = CurrentColor end
-                            end
+                             CreateESPObj(asset, "BOOK", Color3.fromRGB(255, 0, 255))
+                             UpdateESPText(asset, "BOOK")
                         end
                     end
                 end
             end
         end)
+
         if Options.SpeedToggle.Value and LocalPlayer.Character then
             local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
             if hum then hum.WalkSpeed = Options.SpeedVal.Value end
@@ -259,7 +312,7 @@ local function LoadMainScript()
     SaveManager:SetIgnoreIndexes({})
     InterfaceManager:BuildInterfaceSection(Tabs.Settings)
     Window:SelectTab(1)
-    Fluent:Notify({Title = "DARKFORGE-X", Content = "ACCESS GRANTED. NEON GOD ACTIVE.", Duration = 5})
+    Fluent:Notify({Title = "DARKFORGE-X", Content = "NEON GOD V11 ACTIVE.\nDISTANCE TRACKING ON.", Duration = 5})
     
     -- !!! KẾT THÚC CODE GỐC !!! --
 end
