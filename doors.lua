@@ -10,8 +10,8 @@ local function LoadMainScript()
     local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
     local Window = Fluent:CreateWindow({
-        Title = "DARKFORGE-X ULTIMATE",
-        SubTitle = "Room 50 & Distance ESP",
+        Title = "DARKFORGE-X COMPLETE",
+        SubTitle = "Entity Notify & Solver",
         TabWidth = 160,
         Size = UDim2.fromOffset(580, 460),
         Acrylic = true, 
@@ -35,6 +35,60 @@ local function LoadMainScript()
         Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
     }
 
+    -- [SYSTEM 1: ENTITY NOTIFICATION - ĐÃ KHÔI PHỤC]
+    local function PlayAlertSound()
+        local sound = Instance.new("Sound", Workspace)
+        sound.SoundId = "rbxassetid://4590657391" -- Âm thanh báo động
+        sound.Volume = 2
+        sound:Play()
+        game:GetService("Debris"):AddItem(sound, 3)
+    end
+
+    task.spawn(function()
+        Workspace.ChildAdded:Connect(function(child)
+            local EntityNames = {
+                ["RushMoving"] = "RUSH ĐANG TỚI!",
+                ["AmbushMoving"] = "AMBUSH! (TRỐN NHIỀU LẦN)",
+                ["FigureRagdoll"] = "FIGURE ĐÃ XUẤT HIỆN",
+                ["SeekMoving"] = "CHUẨN BỊ CHẠY (SEEK)",
+                ["A60"] = "A-60 TỚI!",
+                ["A120"] = "A-120 TỚI!"
+            }
+            
+            if EntityNames[child.Name] then
+                Fluent:Notify({
+                    Title = "CẢNH BÁO NGUY HIỂM",
+                    Content = EntityNames[child.Name],
+                    SubContent = "Tìm chỗ trốn ngay!",
+                    Duration = 8
+                })
+                PlayAlertSound()
+            end
+        end)
+    end)
+
+    -- [SYSTEM 2: LIBRARY SOLVER UI - ĐÃ KHÔI PHỤC]
+    local LibraryGUI = Instance.new("ScreenGui")
+    LibraryGUI.Name = "DarkForgeLib"
+    LibraryGUI.Parent = CoreGui
+    LibraryGUI.Enabled = false
+    
+    local LibFrame = Instance.new("Frame", LibraryGUI)
+    LibFrame.Size = UDim2.fromOffset(200, 100)
+    LibFrame.Position = UDim2.new(0.8, 0, 0.2, 0)
+    LibFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    LibFrame.BackgroundTransparency = 0.5
+    Instance.new("UICorner", LibFrame)
+    
+    local LibText = Instance.new("TextLabel", LibFrame)
+    LibText.Size = UDim2.fromScale(1,1)
+    LibText.BackgroundTransparency = 1
+    LibText.TextColor3 = Color3.fromRGB(255, 255, 0)
+    LibText.Text = "ROOM 50 SOLVER\nThu thập sách để giải mã..."
+    LibText.TextSize = 14
+    LibText.Font = Enum.Font.Code
+
+    -- [HELPER FUNCTIONS]
     local function CreateESPObj(model, name, color)
         if not model then return end
         if not model:FindFirstChild("DF_Highlight") then
@@ -74,17 +128,20 @@ local function LoadMainScript()
         end
     end
 
+    -- [UI TABS]
     Tabs.Main:AddToggle("VacuumToggle", {Title = "Auto Vacuum (Gold)", Default = true })
     Tabs.Main:AddToggle("MagnetItems", {Title = "Magnet Items", Default = false })
     Tabs.Main:AddSlider("MagnetRange", {Title = "Range", Default = 15, Min = 10, Max = 25, Rounding = 0})
     Tabs.Main:AddToggle("InstantE", {Title = "Instant Interact", Default = true })
 
+    Tabs.Room50:AddParagraph({Title = "Solver Tool", Content = "Bật Auto Solve để hiện vị trí sách và mã."})
+    Tabs.Room50:AddToggle("AutoLibrary", {Title = "Auto Solve (ESP Books + GUI)", Default = true })
     Tabs.Room50:AddToggle("DeleteFigure", {Title = "Delete Figure (Client)", Default = false })
     Tabs.Room50:AddToggle("AutoHeartbeat", {Title = "Auto Heartbeat", Default = true })
     Tabs.Room50:AddToggle("FastCrouch", {Title = "Fast Crouch", Default = false })
 
     Tabs.Visuals:AddToggle("DoorESP", {Title = "True Door ESP", Default = true })
-    Tabs.Visuals:AddToggle("EntESP", {Title = "Entity ESP", Default = true })
+    Tabs.Visuals:AddToggle("EntESP", {Title = "Entity ESP + Notify", Default = true })
     Tabs.Visuals:AddToggle("KeyESP", {Title = "Key/Lever ESP", Default = true })
     Tabs.Visuals:AddToggle("BookESP", {Title = "Book ESP", Default = true })
     Tabs.Visuals:AddToggle("Fullbright", {Title = "Fullbright", Default = false })
@@ -92,6 +149,42 @@ local function LoadMainScript()
     Tabs.Player:AddToggle("SpeedToggle", {Title = "Speed Boost", Default = false })
     Tabs.Player:AddSlider("SpeedVal", {Title = "WalkSpeed", Default = 20, Min = 16, Max = 24, Rounding = 0})
     Tabs.Player:AddToggle("NoclipToggle", {Title = "Noclip", Default = false })
+
+    -- [LOGIC LOOPS]
+    
+    -- Library Logic
+    task.spawn(function()
+        while true do
+            task.wait(1)
+            if Options.AutoLibrary.Value then
+                local GameData = ReplicatedStorage:WaitForChild("GameData")
+                local LatestRoom = GameData:WaitForChild("LatestRoom")
+                
+                if LatestRoom.Value == 50 then
+                    LibraryGUI.Enabled = true
+                    -- Tăng cường ESP cho sách ở Room 50
+                    if Workspace:FindFirstChild("CurrentRooms") then
+                        for _, room in pairs(Workspace.CurrentRooms:GetChildren()) do
+                            if room.Name == "50" then
+                                for _, asset in pairs(room:GetDescendants()) do
+                                    if asset.Name == "LiveHintBook" then
+                                        CreateESPObj(asset, "BOOK", Color3.fromRGB(255, 0, 255))
+                                    end
+                                    if asset.Name == "LibraryHintPaper" then
+                                        CreateESPObj(asset, "PAPER", Color3.fromRGB(0, 255, 255))
+                                    end
+                                end
+                            end
+                        end
+                    end
+                else
+                    LibraryGUI.Enabled = false
+                end
+            else
+                LibraryGUI.Enabled = false
+            end
+        end
+    end)
 
     task.spawn(function()
         while true do
@@ -246,9 +339,10 @@ local function LoadMainScript()
     SaveManager:SetIgnoreIndexes({})
     InterfaceManager:BuildInterfaceSection(Tabs.Settings)
     Window:SelectTab(1)
-    Fluent:Notify({Title = "DARKFORGE-X", Content = "ULTIMATE VERSION LOADED", Duration = 5})
+    Fluent:Notify({Title = "DARKFORGE-X", Content = "ALL SYSTEMS RESTORED.", Duration = 5})
 end
 
+-- KEY SYSTEM
 if CoreGui:FindFirstChild("DarkForgeKey") then CoreGui["DarkForgeKey"]:Destroy() end
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "DarkForgeKey"
