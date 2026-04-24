@@ -2,7 +2,7 @@ local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
-local ValidKey = "DARKFORGE-2025"
+local ValidKey = "huydz"
 
 local function LoadMainScript()
     local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
